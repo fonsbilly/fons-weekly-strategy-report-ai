@@ -22,8 +22,11 @@ async function requireRvp() {
   return user;
 }
 
-function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://fons-weekly-strategy-report-ai.vercel.app";
+function generateTempPassword() {
+  const words = ["Maple", "River", "Falcon", "Harbor", "Cedar", "Summit", "Bridge", "Quarry"];
+  const word = words[Math.floor(Math.random() * words.length)];
+  const digits = Math.floor(1000 + Math.random() * 9000);
+  return `${word}${digits}!`;
 }
 
 export async function POST(request: Request) {
@@ -43,25 +46,28 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Generate the invite link ourselves rather than relying on Supabase to email it -
-  // the free-tier email service is rate-limited to a couple sends per hour, which is
-  // too restrictive even for onboarding a handful of directors. The RVP copies this
-  // link and sends it directly (email, Teams, etc.).
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "invite",
+  // Create the account with a temporary password rather than an emailed/clickable invite
+  // link - corporate email security (link-scanning proxies) tends to pre-click and burn
+  // single-use auth links before the real recipient gets to them, and Supabase's free-tier
+  // email sending is also rate-limited. The RVP relays this password directly (e.g. Teams
+  // chat text) instead.
+  const tempPassword = generateTempPassword();
+
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
-    options: { redirectTo: `${siteUrl()}/set-password` },
+    password: tempPassword,
+    email_confirm: true,
   });
 
-  if (linkError || !linkData.user) {
+  if (createError || !created.user) {
     return NextResponse.json(
-      { error: linkError?.message ?? "Failed to generate invite link." },
+      { error: createError?.message ?? "Failed to create user." },
       { status: 400 }
     );
   }
 
   const { error: profileError } = await admin.from("profiles").insert({
-    id: linkData.user.id,
+    id: created.user.id,
     email,
     full_name: fullName,
     role: "director",
@@ -72,7 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: profileError.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, inviteLink: linkData.properties.action_link });
+  return NextResponse.json({ ok: true, tempPassword });
 }
 
 export async function PATCH(request: Request) {

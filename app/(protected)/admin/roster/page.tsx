@@ -17,8 +17,8 @@ export default async function RosterPage() {
     <div>
       <h1>Roster</h1>
       <p style={{ color: "var(--text-muted)", marginTop: 0 }}>
-        Add and manage your branch directors. New directors get an email invite to set their own
-        password.
+        Add and manage your branch directors. Adding one generates a temporary password to relay
+        to them directly.
       </p>
       <AddDirectorForm />
       <RosterTable directors={directors ?? []} />

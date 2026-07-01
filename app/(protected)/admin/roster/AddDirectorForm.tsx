@@ -16,13 +16,14 @@ export default function AddDirectorForm() {
   const [fullName, setFullName] = useState("");
   const [branch, setBranch] = useState<Branch>("detroit");
   const [error, setError] = useState<string | null>(null);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [addedEmail, setAddedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setInviteLink(null);
+    setTempPassword(null);
     setLoading(true);
 
     const res = await fetch("/api/roster", {
@@ -39,7 +40,8 @@ export default function AddDirectorForm() {
       return;
     }
 
-    setInviteLink(data.inviteLink);
+    setTempPassword(data.tempPassword);
+    setAddedEmail(email);
     setEmail("");
     setFullName("");
     router.refresh();
@@ -93,17 +95,18 @@ export default function AddDirectorForm() {
         {loading ? "Adding..." : "Add director"}
       </button>
       {error && <p style={{ color: "#f87171", width: "100%", margin: 0 }}>{error}</p>}
-      {inviteLink && (
+      {tempPassword && (
         <div style={{ width: "100%" }}>
           <p style={{ color: "#4ade80", margin: "0 0 0.5rem" }}>
-            Director added. Copy this link and send it to them directly (email, Teams, etc.) so
-            they can set their own password:
+            Director added. Tell them directly (Teams chat, in person, etc. - not email, to avoid
+            link-scanning issues) to log in with <strong>{addedEmail}</strong> and this temporary
+            password:
           </p>
           <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input readOnly value={inviteLink} style={inputStyle} onFocus={(e) => e.target.select()} />
+            <input readOnly value={tempPassword} style={inputStyle} onFocus={(e) => e.target.select()} />
             <button
               type="button"
-              onClick={() => navigator.clipboard.writeText(inviteLink)}
+              onClick={() => navigator.clipboard.writeText(tempPassword)}
               style={buttonStyle}
             >
               Copy
