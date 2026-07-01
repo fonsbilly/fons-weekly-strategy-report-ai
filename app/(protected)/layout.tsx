@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 import SignOutButton from "./SignOutButton";
@@ -35,7 +36,19 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           alignItems: "center",
         }}
       >
-        <strong>Weekly Strategy Report</strong>
+        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <strong>Weekly Strategy Report</strong>
+          <nav style={{ display: "flex", gap: "1rem" }}>
+            <Link href="/dashboard" style={{ color: "var(--text-muted)" }}>
+              Dashboard
+            </Link>
+            {profile.role === "rvp" && (
+              <Link href="/admin/roster" style={{ color: "var(--text-muted)" }}>
+                Roster
+              </Link>
+            )}
+          </nav>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <span style={{ color: "var(--text-muted)" }}>
             {profile.full_name} · {profile.role}
