@@ -1,8 +1,11 @@
-export default function Home() {
-  return (
-    <main style={{ padding: "4rem 2rem", textAlign: "center" }}>
-      <h1>Weekly Strategy Report</h1>
-      <p style={{ color: "var(--text-muted)" }}>Deployment skeleton is live. Auth and reporting come next.</p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  redirect(user ? "/dashboard" : "/login");
 }
