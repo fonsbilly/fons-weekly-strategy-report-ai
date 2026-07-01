@@ -16,13 +16,13 @@ export default function AddDirectorForm() {
   const [fullName, setFullName] = useState("");
   const [branch, setBranch] = useState<Branch>("detroit");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
+    setInviteLink(null);
     setLoading(true);
 
     const res = await fetch("/api/roster", {
@@ -39,7 +39,7 @@ export default function AddDirectorForm() {
       return;
     }
 
-    setSuccess(`Invite sent to ${email}.`);
+    setInviteLink(data.inviteLink);
     setEmail("");
     setFullName("");
     router.refresh();
@@ -93,7 +93,24 @@ export default function AddDirectorForm() {
         {loading ? "Adding..." : "Add director"}
       </button>
       {error && <p style={{ color: "#f87171", width: "100%", margin: 0 }}>{error}</p>}
-      {success && <p style={{ color: "#4ade80", width: "100%", margin: 0 }}>{success}</p>}
+      {inviteLink && (
+        <div style={{ width: "100%" }}>
+          <p style={{ color: "#4ade80", margin: "0 0 0.5rem" }}>
+            Director added. Copy this link and send it to them directly (email, Teams, etc.) so
+            they can set their own password:
+          </p>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input readOnly value={inviteLink} style={inputStyle} onFocus={(e) => e.target.select()} />
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(inviteLink)}
+              style={buttonStyle}
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

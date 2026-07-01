@@ -43,19 +43,25 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteUrl()}/set-password`,
+  // Generate the invite link ourselves rather than relying on Supabase to email it -
+  // the free-tier email service is rate-limited to a couple sends per hour, which is
+  // too restrictive even for onboarding a handful of directors. The RVP copies this
+  // link and sends it directly (email, Teams, etc.).
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: { redirectTo: `${siteUrl()}/set-password` },
   });
 
-  if (inviteError || !invited.user) {
+  if (linkError || !linkData.user) {
     return NextResponse.json(
-      { error: inviteError?.message ?? "Failed to invite user." },
+      { error: linkError?.message ?? "Failed to generate invite link." },
       { status: 400 }
     );
   }
 
   const { error: profileError } = await admin.from("profiles").insert({
-    id: invited.user.id,
+    id: linkData.user.id,
     email,
     full_name: fullName,
     role: "director",
@@ -66,7 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: profileError.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, inviteLink: linkData.properties.action_link });
 }
 
 export async function PATCH(request: Request) {
