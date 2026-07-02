@@ -35,9 +35,9 @@ export async function PUT(request: Request) {
     .from("org_settings")
     .update({
       style_guide: body.styleGuide ?? "",
-      words_per_minute: body.wordsPerMinute ?? 150,
-      segment_seconds: body.segmentSeconds,
       total_target_seconds: body.totalTargetSeconds ?? 180,
+      intro_seconds: body.introSeconds ?? 20,
+      ai_seconds: body.aiSeconds ?? 40,
       submission_deadline_day: body.submissionDeadlineDay ?? "thursday",
       submission_deadline_time: body.submissionDeadlineTime ?? "23:59:00",
       timezone: body.timezone ?? "America/Detroit",

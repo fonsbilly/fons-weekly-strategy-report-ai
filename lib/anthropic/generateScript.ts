@@ -1,65 +1,64 @@
 import { getAnthropicClient } from "./client";
-
-type SegmentSeconds = {
-  intro: number;
-  detroit: number;
-  grand_rapids: number;
-  indy: number;
-  ai_initiatives: number;
-};
+import { wordTarget } from "@/lib/timing";
 
 type BranchContent = {
   branchLabel: string;
   directorName: string;
   status: "current" | "history" | "none";
   text: string;
+  seconds: number;
 };
 
 export async function generateScript(params: {
   styleGuide: string;
   wordsPerMinute: number;
-  segmentSeconds: SegmentSeconds;
+  introSeconds: number;
+  aiSeconds: number;
   totalTargetSeconds: number;
   branches: BranchContent[];
   aiInitiativesContent: string;
 }): Promise<string> {
-  const { styleGuide, wordsPerMinute, segmentSeconds, totalTargetSeconds, branches, aiInitiativesContent } =
-    params;
+  const {
+    styleGuide,
+    wordsPerMinute,
+    introSeconds,
+    aiSeconds,
+    totalTargetSeconds,
+    branches,
+    aiInitiativesContent,
+  } = params;
 
-  const wordTarget = (seconds: number) => Math.round((seconds / 60) * wordsPerMinute);
+  const wt = (seconds: number) => wordTarget(seconds, wordsPerMinute);
+
+  const timingLines = [
+    `INTRO: ${introSeconds} seconds (~${wt(introSeconds)} words)`,
+    ...branches.map(
+      (b) => `${b.branchLabel.toUpperCase()}: ${b.seconds} seconds (~${wt(b.seconds)} words)`
+    ),
+    `AI: ${aiSeconds} seconds (~${wt(aiSeconds)} words)`,
+  ].join("\n");
+
+  const formatLines = [
+    "INTRO\n<paragraph>",
+    ...branches.map((b) => `${b.branchLabel.toUpperCase()}\n<paragraph>`),
+    "AI\n<paragraph>",
+  ].join("\n\n");
 
   const systemPrompt = `${styleGuide || "Write in a direct, plain-spoken, upbeat voice."}
 
 You are drafting a spoken script for a Monday all-company Teams call. The script has these timed segments, read at ${wordsPerMinute} words per minute:
-INTRO: ${segmentSeconds.intro} seconds (~${wordTarget(segmentSeconds.intro)} words)
-DETROIT: ${segmentSeconds.detroit} seconds (~${wordTarget(segmentSeconds.detroit)} words)
-GRAND RAPIDS: ${segmentSeconds.grand_rapids} seconds (~${wordTarget(segmentSeconds.grand_rapids)} words)
-INDY: ${segmentSeconds.indy} seconds (~${wordTarget(segmentSeconds.indy)} words)
-AI: ${segmentSeconds.ai_initiatives} seconds (~${wordTarget(segmentSeconds.ai_initiatives)} words)
+${timingLines}
 Total target time: ${totalTargetSeconds} seconds.
 
 Each branch segment below is marked with a status:
 - CURRENT: real content submitted this week. Write the segment normally, hitting close to its word target.
-- HISTORY: no new report was submitted this week. You are given that director's reports from recent prior weeks (oldest to newest). Synthesize a brief continuation/update from this - phrase it as an ongoing status (e.g. "as previously mentioned..." or "still working through..."), not as fresh news, and do not present old information as if it happened this week. Keep it noticeably shorter than a CURRENT segment.
+- HISTORY: no new report was submitted this week. You are given that director's reports from recent prior weeks (oldest to newest). Synthesize a brief continuation/update - phrase it as an ongoing status (e.g. "still working through...") not as fresh news, and do not present old information as if it happened this week. Keep it noticeably shorter than a CURRENT segment.
 - NONE: no submission this week and no history to draw on. Do NOT invent any facts, numbers, deals, names, or events for this segment under any circumstances. Write exactly one brief, generic sentence noting no update came in this week, and nothing more.
 
-Output the script as plain text broken into labeled sections exactly like this format:
-INTRO
-<paragraph>
+Respect each segment's word target so the whole script reads to the total target time at the stated pace. Output the script as plain text broken into labeled sections exactly like this format:
+${formatLines}
 
-DETROIT
-<paragraph>
-
-GRAND RAPIDS
-<paragraph>
-
-INDY
-<paragraph>
-
-AI
-<paragraph>
-
-If a branch's director is not listed below, omit that section's paragraph entirely and just note briefly there is no update. Do not include timestamps, stage directions, or explanations - only the spoken words.`;
+Do not include timestamps, stage directions, or explanations - only the spoken words.`;
 
   const branchBlocks = branches
     .map((b) => {

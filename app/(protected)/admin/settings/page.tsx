@@ -9,9 +9,15 @@ export default async function SettingsPage() {
   const { data: settings } = await supabase
     .from("org_settings")
     .select(
-      "style_guide, words_per_minute, segment_seconds, total_target_seconds, submission_deadline_day, submission_deadline_time, timezone"
+      "style_guide, words_per_minute, total_target_seconds, intro_seconds, ai_seconds, submission_deadline_day, submission_deadline_time, timezone, wpm_calibrated"
     )
     .single();
+
+  const { count: activeBranchCount } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "director")
+    .eq("is_active", true);
 
   return (
     <div>
@@ -21,11 +27,12 @@ export default async function SettingsPage() {
       </p>
       <SettingsForm
         initialStyleGuide={settings?.style_guide ?? ""}
-        initialWordsPerMinute={settings?.words_per_minute ?? 150}
-        initialSegmentSeconds={
-          settings?.segment_seconds ?? { intro: 20, detroit: 40, grand_rapids: 40, indy: 40, ai_initiatives: 40 }
-        }
+        wordsPerMinute={settings?.words_per_minute ?? 150}
+        wpmCalibrated={settings?.wpm_calibrated ?? false}
         initialTotalTargetSeconds={settings?.total_target_seconds ?? 180}
+        initialIntroSeconds={settings?.intro_seconds ?? 20}
+        initialAiSeconds={settings?.ai_seconds ?? 40}
+        activeBranchCount={activeBranchCount ?? 0}
         initialDeadlineDay={settings?.submission_deadline_day ?? "thursday"}
         initialDeadlineTime={settings?.submission_deadline_time ?? "23:59:00"}
         initialTimezone={settings?.timezone ?? "America/Detroit"}

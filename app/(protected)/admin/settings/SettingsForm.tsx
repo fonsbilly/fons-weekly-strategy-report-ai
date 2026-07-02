@@ -2,31 +2,31 @@
 
 import { useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-
-type SegmentSeconds = {
-  intro: number;
-  detroit: number;
-  grand_rapids: number;
-  indy: number;
-  ai_initiatives: number;
-};
+import { allocateTime, wordTarget } from "@/lib/timing";
+import WpmTest from "./WpmTest";
 
 const DEADLINE_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 export default function SettingsForm({
   initialStyleGuide,
-  initialWordsPerMinute,
-  initialSegmentSeconds,
+  wordsPerMinute,
+  wpmCalibrated,
   initialTotalTargetSeconds,
+  initialIntroSeconds,
+  initialAiSeconds,
+  activeBranchCount,
   initialDeadlineDay,
   initialDeadlineTime,
   initialTimezone,
   apiKeyConfigured,
 }: {
   initialStyleGuide: string;
-  initialWordsPerMinute: number;
-  initialSegmentSeconds: SegmentSeconds;
+  wordsPerMinute: number;
+  wpmCalibrated: boolean;
   initialTotalTargetSeconds: number;
+  initialIntroSeconds: number;
+  initialAiSeconds: number;
+  activeBranchCount: number;
   initialDeadlineDay: string;
   initialDeadlineTime: string;
   initialTimezone: string;
@@ -34,19 +34,17 @@ export default function SettingsForm({
 }) {
   const router = useRouter();
   const [styleGuide, setStyleGuide] = useState(initialStyleGuide);
-  const [wordsPerMinute, setWordsPerMinute] = useState(initialWordsPerMinute);
-  const [segmentSeconds, setSegmentSeconds] = useState(initialSegmentSeconds);
   const [totalTargetSeconds, setTotalTargetSeconds] = useState(initialTotalTargetSeconds);
+  const [introSeconds, setIntroSeconds] = useState(initialIntroSeconds);
+  const [aiSeconds, setAiSeconds] = useState(initialAiSeconds);
   const [deadlineDay, setDeadlineDay] = useState(initialDeadlineDay);
   const [deadlineTime, setDeadlineTime] = useState(initialDeadlineTime);
   const [timezone, setTimezone] = useState(initialTimezone);
+  const [showTest, setShowTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  function updateSegment(key: keyof SegmentSeconds, value: number) {
-    setSaved(false);
-    setSegmentSeconds((prev) => ({ ...prev, [key]: value }));
-  }
+  const allocation = allocateTime(totalTargetSeconds, introSeconds, aiSeconds, activeBranchCount);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -57,9 +55,9 @@ export default function SettingsForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         styleGuide,
-        wordsPerMinute,
-        segmentSeconds,
         totalTargetSeconds,
+        introSeconds,
+        aiSeconds,
         submissionDeadlineDay: deadlineDay,
         submissionDeadlineTime: deadlineTime,
         timezone,
@@ -69,6 +67,10 @@ export default function SettingsForm({
     setSaving(false);
     setSaved(true);
     router.refresh();
+  }
+
+  function markDirty() {
+    setSaved(false);
   }
 
   return (
@@ -97,6 +99,91 @@ export default function SettingsForm({
       </div>
 
       <div style={cardStyle}>
+        <h3 style={{ marginTop: 0 }}>Reading speed</h3>
+        <p style={{ margin: "0 0 0.5rem" }}>
+          Current: <strong>{wordsPerMinute} words per minute</strong>{" "}
+          {wpmCalibrated ? (
+            <span style={{ color: "#4ade80" }}>(calibrated)</span>
+          ) : (
+            <span style={{ color: "#facc15" }}>(not yet calibrated - default value)</span>
+          )}
+        </p>
+        <p style={{ color: "var(--text-muted)", marginTop: 0 }}>
+          This sets how many words fit in each timed segment so the script reads to time at your
+          natural pace.
+        </p>
+        {!showTest ? (
+          <button type="button" onClick={() => setShowTest(true)} style={secondaryButtonStyle}>
+            {wpmCalibrated ? "Retake reading test" : "Take reading test"}
+          </button>
+        ) : (
+          <WpmTest onSaved={() => setShowTest(false)} />
+        )}
+      </div>
+
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0 }}>Talk time</h3>
+        <p style={{ color: "var(--text-muted)", marginTop: 0 }}>
+          Total time is split automatically: intro and AI get fixed amounts, and the rest is
+          divided evenly across your {activeBranchCount} active{" "}
+          {activeBranchCount === 1 ? "branch" : "branches"}.
+        </p>
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+          <label>
+            Total seconds
+            <input
+              type="number"
+              value={totalTargetSeconds}
+              onChange={(e) => {
+                setTotalTargetSeconds(Number(e.target.value));
+                markDirty();
+              }}
+              style={inputStyle}
+            />
+          </label>
+          <label>
+            Intro seconds
+            <input
+              type="number"
+              value={introSeconds}
+              onChange={(e) => {
+                setIntroSeconds(Number(e.target.value));
+                markDirty();
+              }}
+              style={inputStyle}
+            />
+          </label>
+          <label>
+            AI seconds
+            <input
+              type="number"
+              value={aiSeconds}
+              onChange={(e) => {
+                setAiSeconds(Number(e.target.value));
+                markDirty();
+              }}
+              style={inputStyle}
+            />
+          </label>
+        </div>
+        <div style={{ background: "var(--surface)", borderRadius: 6, padding: "0.75rem" }}>
+          <strong>Computed allocation</strong>
+          <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem", color: "var(--text-muted)" }}>
+            <li>
+              Intro: {introSeconds}s (~{wordTarget(introSeconds, wordsPerMinute)} words)
+            </li>
+            <li>
+              Each branch: {allocation.perBranchSeconds}s (~
+              {wordTarget(allocation.perBranchSeconds, wordsPerMinute)} words)
+            </li>
+            <li>
+              AI: {aiSeconds}s (~{wordTarget(aiSeconds, wordsPerMinute)} words)
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div style={cardStyle}>
         <h3 style={{ marginTop: 0 }}>Voice &amp; style</h3>
         <label>
           Style guide
@@ -104,53 +191,12 @@ export default function SettingsForm({
             value={styleGuide}
             onChange={(e) => {
               setStyleGuide(e.target.value);
-              setSaved(false);
+              markDirty();
             }}
             rows={6}
             style={textareaStyle}
           />
         </label>
-      </div>
-
-      <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Timing</h3>
-        <label style={{ display: "block", marginBottom: "0.75rem" }}>
-          Words per minute
-          <input
-            type="number"
-            value={wordsPerMinute}
-            onChange={(e) => {
-              setWordsPerMinute(Number(e.target.value));
-              setSaved(false);
-            }}
-            style={inputStyle}
-          />
-        </label>
-        <label style={{ display: "block", marginBottom: "0.75rem" }}>
-          Total target seconds
-          <input
-            type="number"
-            value={totalTargetSeconds}
-            onChange={(e) => {
-              setTotalTargetSeconds(Number(e.target.value));
-              setSaved(false);
-            }}
-            style={inputStyle}
-          />
-        </label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.75rem" }}>
-          {(Object.keys(segmentSeconds) as (keyof SegmentSeconds)[]).map((key) => (
-            <label key={key}>
-              {key.replace("_", " ")} (sec)
-              <input
-                type="number"
-                value={segmentSeconds[key]}
-                onChange={(e) => updateSegment(key, Number(e.target.value))}
-                style={inputStyle}
-              />
-            </label>
-          ))}
-        </div>
       </div>
 
       <div style={cardStyle}>
@@ -162,7 +208,7 @@ export default function SettingsForm({
               value={deadlineDay}
               onChange={(e) => {
                 setDeadlineDay(e.target.value);
-                setSaved(false);
+                markDirty();
               }}
               style={inputStyle}
             >
@@ -180,7 +226,7 @@ export default function SettingsForm({
               value={deadlineTime.slice(0, 5)}
               onChange={(e) => {
                 setDeadlineTime(`${e.target.value}:00`);
-                setSaved(false);
+                markDirty();
               }}
               style={inputStyle}
             />
@@ -192,7 +238,7 @@ export default function SettingsForm({
               value={timezone}
               onChange={(e) => {
                 setTimezone(e.target.value);
-                setSaved(false);
+                markDirty();
               }}
               style={inputStyle}
             />
@@ -218,7 +264,7 @@ const cardStyle: CSSProperties = {
 
 const inputStyle: CSSProperties = {
   display: "block",
-  width: "100%",
+  width: "160px",
   marginTop: "0.35rem",
   padding: "0.55rem",
   background: "var(--surface)",
@@ -230,6 +276,7 @@ const inputStyle: CSSProperties = {
 
 const textareaStyle: CSSProperties = {
   ...inputStyle,
+  width: "100%",
   fontFamily: "inherit",
   resize: "vertical",
 };
@@ -242,5 +289,15 @@ const buttonStyle: CSSProperties = {
   color: "#0f172a",
   fontWeight: 600,
   fontSize: "1rem",
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  padding: "0.6rem 1.2rem",
+  background: "transparent",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  color: "var(--text)",
+  fontSize: "0.95rem",
   cursor: "pointer",
 };

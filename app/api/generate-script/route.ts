@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateScript } from "@/lib/anthropic/generateScript";
+import { allocateTime } from "@/lib/timing";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
 
   const { data: settings } = await supabase
     .from("org_settings")
-    .select("style_guide, words_per_minute, segment_seconds, total_target_seconds")
+    .select("style_guide, words_per_minute, total_target_seconds, intro_seconds, ai_seconds")
     .single();
 
   const { data: draft } = await supabase
@@ -128,14 +129,21 @@ export async function POST(request: Request) {
     });
   }
 
+  const introSeconds = settings?.intro_seconds ?? 20;
+  const aiSeconds = settings?.ai_seconds ?? 40;
+  const totalTargetSeconds = settings?.total_target_seconds ?? 180;
+  const allocation = allocateTime(totalTargetSeconds, introSeconds, aiSeconds, branches.length);
+
+  const timedBranches = branches.map((b) => ({ ...b, seconds: allocation.perBranchSeconds }));
+
   try {
     const script = await generateScript({
       styleGuide: settings?.style_guide ?? "",
       wordsPerMinute: settings?.words_per_minute ?? 150,
-      segmentSeconds:
-        settings?.segment_seconds ?? { intro: 20, detroit: 40, grand_rapids: 40, indy: 40, ai_initiatives: 40 },
-      totalTargetSeconds: settings?.total_target_seconds ?? 180,
-      branches,
+      introSeconds,
+      aiSeconds,
+      totalTargetSeconds,
+      branches: timedBranches,
       aiInitiativesContent: draft?.ai_initiatives_content ?? "",
     });
 
