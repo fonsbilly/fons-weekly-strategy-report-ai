@@ -48,9 +48,14 @@ export default async function ProtectedLayout({ children }: { children: React.Re
               </Link>
             )}
             {profile.role === "rvp" && (
-              <Link href="/admin/roster" style={{ color: "var(--text-muted)" }}>
-                Roster
-              </Link>
+              <>
+                <Link href="/admin/compile" style={{ color: "var(--text-muted)" }}>
+                  Compile
+                </Link>
+                <Link href="/admin/roster" style={{ color: "var(--text-muted)" }}>
+                  Roster
+                </Link>
+              </>
             )}
           </nav>
         </div>
