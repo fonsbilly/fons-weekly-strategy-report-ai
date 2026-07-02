@@ -4,6 +4,8 @@ import { getWeekStart } from "@/lib/weeks";
 import type { Profile } from "@/lib/types";
 import SubmissionForm from "./SubmissionForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function SubmitPage() {
   const supabase = await createClient();
 

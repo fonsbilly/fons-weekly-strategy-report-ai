@@ -12,6 +12,12 @@ type SubmissionRow = {
   narrative: string;
 };
 
+type MissingRow = {
+  director_id: string;
+  director_name: string;
+  branch: string;
+};
+
 const BRANCH_LABELS: Record<string, string> = {
   detroit: "Detroit",
   grand_rapids: "Grand Rapids",
@@ -27,17 +33,22 @@ const FIELDS: { key: "positives" | "challenges" | "narrative"; label: string }[]
 export default function CompileScrubView({
   weekStart,
   submissions,
+  missing,
   initialSelectedFields,
   initialAiContent,
+  initialUseHistoryBranches,
 }: {
   weekStart: string;
   submissions: SubmissionRow[];
+  missing: MissingRow[];
   initialSelectedFields: Record<string, string[]>;
   initialAiContent: string;
+  initialUseHistoryBranches: string[];
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Record<string, string[]>>(initialSelectedFields);
   const [aiContent, setAiContent] = useState(initialAiContent);
+  const [useHistory, setUseHistory] = useState<Set<string>>(new Set(initialUseHistoryBranches));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -52,24 +63,42 @@ export default function CompileScrubView({
     });
   }
 
+  function toggleHistory(branch: string) {
+    setSaved(false);
+    setUseHistory((prev) => {
+      const next = new Set(prev);
+      if (next.has(branch)) {
+        next.delete(branch);
+      } else {
+        next.add(branch);
+      }
+      return next;
+    });
+  }
+
   async function handleSave() {
     setSaving(true);
     await fetch("/api/compile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weekStart, selectedFields: selected, aiInitiativesContent: aiContent }),
+      body: JSON.stringify({
+        weekStart,
+        selectedFields: selected,
+        aiInitiativesContent: aiContent,
+        useHistoryBranches: Array.from(useHistory),
+      }),
     });
     setSaving(false);
     setSaved(true);
     router.refresh();
   }
 
-  if (submissions.length === 0) {
-    return <p style={{ color: "var(--text-muted)" }}>No submissions yet for this week.</p>;
-  }
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {submissions.length === 0 && missing.length === 0 && (
+        <p style={{ color: "var(--text-muted)" }}>No directors on the roster yet.</p>
+      )}
+
       {submissions.map((s) => (
         <div key={s.director_id} style={cardStyle}>
           <h3 style={{ marginTop: 0, marginBottom: "0.75rem" }}>
@@ -91,6 +120,27 @@ export default function CompileScrubView({
               </label>
             </div>
           ))}
+        </div>
+      ))}
+
+      {missing.map((m) => (
+        <div key={m.director_id} style={{ ...cardStyle, borderColor: "#facc15" }}>
+          <h3 style={{ marginTop: 0, marginBottom: "0.5rem" }}>
+            {BRANCH_LABELS[m.branch] ?? m.branch} — {m.director_name}
+          </h3>
+          <p style={{ color: "#facc15", marginTop: 0, marginBottom: "0.75rem" }}>
+            No submission this week. The script will leave this segment brief rather than
+            inventing content, unless you opt in below.
+          </p>
+          <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <input
+              type="checkbox"
+              checked={useHistory.has(m.branch)}
+              onChange={() => toggleHistory(m.branch)}
+            />
+            Use their last 4 weeks of reports to draft a continuation update instead of leaving
+            this blank
+          </label>
         </div>
       ))}
 

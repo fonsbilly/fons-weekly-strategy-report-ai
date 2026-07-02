@@ -31,6 +31,7 @@ export async function POST(request: Request) {
   const weekStart: string | undefined = body.weekStart;
   const selectedFields: Record<string, string[]> | undefined = body.selectedFields;
   const aiInitiativesContent: string = body.aiInitiativesContent ?? "";
+  const useHistoryBranches: string[] = body.useHistoryBranches ?? [];
 
   if (!weekStart || !selectedFields) {
     return NextResponse.json({ error: "Missing weekStart or selectedFields." }, { status: 400 });
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
       week_start: weekStart,
       selected_fields: selectedFields,
       ai_initiatives_content: aiInitiativesContent,
+      use_history_branches: useHistoryBranches,
       created_by: rvp.id,
     },
     { onConflict: "week_start" }

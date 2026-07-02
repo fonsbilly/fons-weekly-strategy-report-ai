@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getWeekStart } from "@/lib/weeks";
 import StatusDashboardTable from "./StatusDashboardTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const supabase = await createClient();
 

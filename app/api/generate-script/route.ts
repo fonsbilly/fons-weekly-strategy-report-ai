@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateScript } from "@/lib/anthropic/generateScript";
 
+export const dynamic = "force-dynamic";
+
 async function requireRvp() {
   const supabase = await createClient();
   const {
@@ -48,30 +50,83 @@ export async function POST(request: Request) {
 
   const { data: draft } = await supabase
     .from("weekly_scripts")
-    .select("selected_fields, ai_initiatives_content")
+    .select("selected_fields, ai_initiatives_content, use_history_branches")
     .eq("week_start", weekStart)
     .maybeSingle();
 
+  const { data: directors } = await supabase
+    .from("profiles")
+    .select("id, full_name, branch")
+    .eq("role", "director")
+    .eq("is_active", true);
+
   const { data: submissions } = await supabase
     .from("submissions")
-    .select("director_id, branch, positives, challenges, narrative, profiles(full_name)")
+    .select("director_id, positives, challenges, narrative")
     .eq("week_start", weekStart);
 
   const selectedFields = (draft?.selected_fields as Record<string, string[]>) ?? {};
+  const useHistoryBranches = new Set(draft?.use_history_branches ?? []);
+  const submissionByDirector = new Map((submissions ?? []).map((s: any) => [s.director_id, s]));
 
-  const branches = (submissions ?? []).map((s: any) => {
-    const fields = selectedFields[s.director_id] ?? [];
-    const parts: string[] = [];
-    if (fields.includes("positives") && s.positives) parts.push(`Positives: ${s.positives}`);
-    if (fields.includes("challenges") && s.challenges) parts.push(`Challenges: ${s.challenges}`);
-    if (fields.includes("narrative") && s.narrative) parts.push(`Narrative: ${s.narrative}`);
+  const branches = [];
 
-    return {
-      branchLabel: BRANCH_LABELS[s.branch] ?? s.branch,
-      directorName: s.profiles?.full_name ?? "Unknown",
-      text: parts.join("\n"),
-    };
-  });
+  for (const director of directors ?? []) {
+    const branchLabel = BRANCH_LABELS[director.branch] ?? director.branch;
+    const current = submissionByDirector.get(director.id);
+    const fields = selectedFields[director.id] ?? [];
+
+    if (current && fields.length > 0) {
+      const parts: string[] = [];
+      if (fields.includes("positives") && current.positives) parts.push(`Positives: ${current.positives}`);
+      if (fields.includes("challenges") && current.challenges) parts.push(`Challenges: ${current.challenges}`);
+      if (fields.includes("narrative") && current.narrative) parts.push(`Narrative: ${current.narrative}`);
+
+      branches.push({
+        branchLabel,
+        directorName: director.full_name,
+        status: "current" as const,
+        text: parts.join("\n"),
+      });
+      continue;
+    }
+
+    if (useHistoryBranches.has(director.branch)) {
+      const { data: history } = await supabase
+        .from("submissions")
+        .select("week_start, positives, challenges, narrative")
+        .eq("director_id", director.id)
+        .lt("week_start", weekStart)
+        .order("week_start", { ascending: false })
+        .limit(4);
+
+      const ordered = (history ?? []).slice().reverse();
+      const text = ordered
+        .map((h: any) => {
+          const parts: string[] = [];
+          if (h.positives) parts.push(`Positives: ${h.positives}`);
+          if (h.challenges) parts.push(`Challenges: ${h.challenges}`);
+          if (h.narrative) parts.push(`Narrative: ${h.narrative}`);
+          return `Week of ${h.week_start}:\n${parts.join("\n")}`;
+        })
+        .join("\n\n");
+
+      branches.push({
+        branchLabel,
+        directorName: director.full_name,
+        status: "history" as const,
+        text,
+      });
+      continue;
+    }
+
+    branches.push({
+      branchLabel,
+      directorName: director.full_name,
+      status: "none" as const,
+      text: "",
+    });
+  }
 
   try {
     const script = await generateScript({

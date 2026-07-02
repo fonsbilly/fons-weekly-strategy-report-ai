@@ -3,6 +3,8 @@ import type { Profile } from "@/lib/types";
 import AddDirectorForm from "./AddDirectorForm";
 import RosterTable from "./RosterTable";
 
+export const dynamic = "force-dynamic";
+
 export default async function RosterPage() {
   const supabase = await createClient();
 
