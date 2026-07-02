@@ -57,6 +57,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
                 <Link href="/admin/roster" style={{ color: "var(--text-muted)" }}>
                   Roster
                 </Link>
+                <Link href="/admin/settings" style={{ color: "var(--text-muted)" }}>
+                  Settings
+                </Link>
               </>
             )}
           </nav>
