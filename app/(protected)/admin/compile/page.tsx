@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getWeekStart } from "@/lib/weeks";
 import CompileScrubView from "./CompileScrubView";
+import GenerateScriptSection from "./GenerateScriptSection";
 
 export default async function CompilePage() {
   const supabase = await createClient();
@@ -15,7 +16,7 @@ export default async function CompilePage() {
 
   const { data: draft } = await supabase
     .from("weekly_scripts")
-    .select("selected_fields, ai_initiatives_content")
+    .select("selected_fields, ai_initiatives_content, generated_script, final_script")
     .eq("week_start", weekStart)
     .maybeSingle();
 
@@ -38,6 +39,12 @@ export default async function CompilePage() {
         initialSelectedFields={(draft?.selected_fields as Record<string, string[]>) ?? {}}
         initialAiContent={draft?.ai_initiatives_content ?? ""}
       />
+      <div style={{ marginTop: "1.5rem" }}>
+        <GenerateScriptSection
+          weekStart={weekStart}
+          initialScript={draft?.final_script ?? draft?.generated_script ?? ""}
+        />
+      </div>
     </div>
   );
 }
