@@ -23,7 +23,9 @@ https://fons-weekly-strategy-report-ai.vercel.app
 Thanks,
 Bill`;
 
-  const href = `mailto:${recipients.join(",")}?subject=${encodeURIComponent(
+  // Semicolon-separated on BCC: Outlook uses ";" as the address separator, and BCC keeps
+  // the directors from seeing each other's addresses.
+  const href = `mailto:?bcc=${recipients.join(";")}&subject=${encodeURIComponent(
     subject
   )}&body=${encodeURIComponent(body)}`;
 
@@ -33,7 +35,7 @@ Bill`;
         Remind {recipients.length} non-submitter{recipients.length === 1 ? "" : "s"}
       </a>
       <p style={{ color: "var(--text-muted)", marginTop: "0.5rem", marginBottom: 0 }}>
-        Opens your email with {recipients.length === 1 ? "the director" : "them"} pre-filled and a
+        Opens your email with {recipients.length === 1 ? "the director" : "them"} on BCC and a
         reminder written - you just hit send.
       </p>
     </div>
