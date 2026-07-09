@@ -97,40 +97,42 @@ export default async function TrendsPage({
         Showing {from} to {to}.
       </p>
 
-      <div style={{ ...cardStyle, marginBottom: "1.5rem" }}>
-        <h3 style={{ marginTop: 0 }}>Timeliness &amp; activity</h3>
-        {metrics.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", margin: 0 }}>No submissions in this range.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-                <th style={th}>Branch</th>
-                <th style={th}>Submissions</th>
-                <th style={th}>On time</th>
-                <th style={th}>Late</th>
-                <th style={th}>On-time rate</th>
-                <th style={th}>Last submitted</th>
-              </tr>
-            </thead>
-            <tbody>
-              {metrics.map((m) => (
-                <tr key={m.branch} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={td}>{m.branchLabel}</td>
-                  <td style={td}>{m.total}</td>
-                  <td style={td}>{m.onTime}</td>
-                  <td style={td}>{m.late}</td>
-                  <td style={td}>{m.total > 0 ? Math.round((m.onTime / m.total) * 100) : 0}%</td>
-                  <td style={td}>{m.lastWeek ?? "—"}</td>
+      {/* Timeliness/tardiness metrics are RVP-only. Directors get recurring-themes
+          analysis (their own branch) instead. */}
+      {isRvp && (
+        <div style={{ ...cardStyle, marginBottom: "1.5rem" }}>
+          <h3 style={{ marginTop: 0 }}>Timeliness &amp; activity</h3>
+          {metrics.length === 0 ? (
+            <p style={{ color: "var(--text-muted)", margin: 0 }}>No submissions in this range.</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
+                  <th style={th}>Branch</th>
+                  <th style={th}>Submissions</th>
+                  <th style={th}>On time</th>
+                  <th style={th}>Late</th>
+                  <th style={th}>On-time rate</th>
+                  <th style={th}>Last submitted</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {metrics.map((m) => (
+                  <tr key={m.branch} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td style={td}>{m.branchLabel}</td>
+                    <td style={td}>{m.total}</td>
+                    <td style={td}>{m.onTime}</td>
+                    <td style={td}>{m.late}</td>
+                    <td style={td}>{m.total > 0 ? Math.round((m.onTime / m.total) * 100) : 0}%</td>
+                    <td style={td}>{m.lastWeek ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
-      {/* Recurring-themes AI analysis is shown to directors only (their own branch).
-          The RVP view is intentionally limited to tardiness/activity metrics. */}
       {!isRvp && <TrendAnalysis key={`${from}-${to}`} isRvp={isRvp} from={from} to={to} />}
     </div>
   );
