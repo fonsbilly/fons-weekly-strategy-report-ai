@@ -129,7 +129,9 @@ export default async function TrendsPage({
         )}
       </div>
 
-      <TrendAnalysis key={`${from}-${to}`} isRvp={isRvp} from={from} to={to} />
+      {/* Recurring-themes AI analysis is shown to directors only (their own branch).
+          The RVP view is intentionally limited to tardiness/activity metrics. */}
+      {!isRvp && <TrendAnalysis key={`${from}-${to}`} isRvp={isRvp} from={from} to={to} />}
     </div>
   );
 }
