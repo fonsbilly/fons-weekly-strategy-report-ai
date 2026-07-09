@@ -37,6 +37,34 @@ export async function POST(request: Request) {
   const timezone = settings?.timezone ?? "America/Detroit";
   const now = new Date();
   const weekStart = getWeekStart(now, timezone);
+
+  // Timing (submitted_at + is_late) is locked to the FIRST submission for the week. Later edits
+  // the same week update content only - a director who got it in on time never flips to late by
+  // fixing a typo after the deadline.
+  const { data: existing } = await supabase
+    .from("submissions")
+    .select("id")
+    .eq("director_id", user.id)
+    .eq("week_start", weekStart)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("submissions")
+      .update({
+        positives,
+        challenges,
+        narrative,
+        acknowledged_duplicate_warning: acknowledgedDuplicateWarning,
+      })
+      .eq("id", existing.id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, weekStart });
+  }
+
   const late = isLate(
     now,
     weekStart,
@@ -45,20 +73,17 @@ export async function POST(request: Request) {
     timezone
   );
 
-  const { error } = await supabase.from("submissions").upsert(
-    {
-      director_id: user.id,
-      branch: profile.branch,
-      week_start: weekStart,
-      positives,
-      challenges,
-      narrative,
-      submitted_at: now.toISOString(),
-      is_late: late,
-      acknowledged_duplicate_warning: acknowledgedDuplicateWarning,
-    },
-    { onConflict: "director_id,week_start" }
-  );
+  const { error } = await supabase.from("submissions").insert({
+    director_id: user.id,
+    branch: profile.branch,
+    week_start: weekStart,
+    positives,
+    challenges,
+    narrative,
+    submitted_at: now.toISOString(),
+    is_late: late,
+    acknowledged_duplicate_warning: acknowledgedDuplicateWarning,
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
