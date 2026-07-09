@@ -10,10 +10,12 @@ const BRANCH_LABELS: Record<string, string> = {
   indianapolis: "Indianapolis",
 };
 
-const HISTORY_WEEKS = 8;
-
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
+
+  const body = await request.json().catch(() => ({}));
+  const from: string | undefined = body.from;
+  const to: string | undefined = body.to;
 
   const {
     data: { user },
@@ -36,12 +38,17 @@ export async function POST() {
   const isRvp = profile.role === "rvp";
 
   // RLS scopes this automatically: RVP sees all submissions, a director sees only their own.
-  const { data: submissions } = await supabase
+  let query = supabase
     .from("submissions")
     .select("director_id, branch, week_start, positives, challenges, narrative, profiles(full_name)")
     .order("week_start", { ascending: true });
 
-  // Group by director/branch, keep most recent HISTORY_WEEKS.
+  // week_start is a YYYY-MM-DD date, so string comparison is chronological.
+  if (from) query = query.gte("week_start", from);
+  if (to) query = query.lte("week_start", to);
+
+  const { data: submissions } = await query;
+
   const byDirector = new Map<string, any>();
   for (const s of submissions ?? []) {
     const key = s.director_id;
@@ -61,10 +68,7 @@ export async function POST() {
     });
   }
 
-  const branches = Array.from(byDirector.values()).map((b) => ({
-    ...b,
-    weeks: b.weeks.slice(-HISTORY_WEEKS),
-  }));
+  const branches = Array.from(byDirector.values());
 
   try {
     const result = await analyzeTrends({ branches, includeCrossBranch: isRvp });

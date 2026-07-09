@@ -7,7 +7,15 @@ type TrendResult = {
   crossBranchFlags: string[];
 };
 
-export default function TrendAnalysis({ isRvp }: { isRvp: boolean }) {
+export default function TrendAnalysis({
+  isRvp,
+  from,
+  to,
+}: {
+  isRvp: boolean;
+  from: string;
+  to: string;
+}) {
   const [result, setResult] = useState<TrendResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +24,11 @@ export default function TrendAnalysis({ isRvp }: { isRvp: boolean }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/trends", { method: "POST" });
+      const res = await fetch("/api/trends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Failed to analyze trends.");

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import TrendAnalysis from "./TrendAnalysis";
+import DateRangeControl from "./DateRangeControl";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,23 @@ type Metric = {
   lastWeek: string | null;
 };
 
-export default async function TrendsPage() {
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export default async function TrendsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const params = await searchParams;
+
+  const today = new Date();
+  const defaultTo = isoDate(today);
+  const defaultFrom = isoDate(new Date(today.getTime() - 84 * 24 * 60 * 60 * 1000)); // ~12 weeks back
+  const from = params.from ?? defaultFrom;
+  const to = params.to ?? defaultTo;
+
   const supabase = await createClient();
 
   const {
@@ -39,6 +56,8 @@ export default async function TrendsPage() {
   const { data: submissions } = await supabase
     .from("submissions")
     .select("branch, is_late, week_start")
+    .gte("week_start", from)
+    .lte("week_start", to)
     .order("week_start", { ascending: false })
     .returns<Row[]>();
 
@@ -72,10 +91,16 @@ export default async function TrendsPage() {
         {isRvp ? "Patterns across your branches over time." : "Your submission history and patterns."}
       </p>
 
+      <DateRangeControl from={from} to={to} />
+
+      <p style={{ color: "var(--text-muted)", marginTop: 0 }}>
+        Showing {from} to {to}.
+      </p>
+
       <div style={{ ...cardStyle, marginBottom: "1.5rem" }}>
         <h3 style={{ marginTop: 0 }}>Timeliness &amp; activity</h3>
         {metrics.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", margin: 0 }}>No submissions yet.</p>
+          <p style={{ color: "var(--text-muted)", margin: 0 }}>No submissions in this range.</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -104,7 +129,7 @@ export default async function TrendsPage() {
         )}
       </div>
 
-      <TrendAnalysis isRvp={isRvp} />
+      <TrendAnalysis key={`${from}-${to}`} isRvp={isRvp} from={from} to={to} />
     </div>
   );
 }
