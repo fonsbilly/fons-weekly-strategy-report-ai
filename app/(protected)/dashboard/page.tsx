@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getWeekStart } from "@/lib/weeks";
 import StatusDashboardTable from "./StatusDashboardTable";
+import RemindButton from "./RemindButton";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,26 @@ export default async function DashboardPage() {
 
   const { data: statuses } = await supabase.rpc("get_week_status", { p_week_start: weekStart });
 
-  const showCalibratePrompt = profile?.role === "rvp" && !settings?.wpm_calibrated;
+  const isRvp = profile?.role === "rvp";
+  const showCalibratePrompt = isRvp && !settings?.wpm_calibrated;
+
+  // For the RVP: figure out who hasn't submitted this week, and pull their emails for the
+  // one-click reminder (mailto from the RVP's own mail client - no server-side sending).
+  let nonSubmitterEmails: string[] = [];
+  let nonSubmitterNames: string[] = [];
+  if (isRvp) {
+    const submittedIds = new Set(
+      (statuses ?? []).filter((s: any) => s.has_submitted).map((s: any) => s.director_id)
+    );
+    const { data: directors } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("role", "director")
+      .eq("is_active", true);
+    const missing = (directors ?? []).filter((d: any) => !submittedIds.has(d.id));
+    nonSubmitterEmails = missing.map((d: any) => d.email);
+    nonSubmitterNames = missing.map((d: any) => d.full_name);
+  }
 
   return (
     <div>
@@ -63,6 +83,14 @@ export default async function DashboardPage() {
             Go to Settings
           </Link>
         </div>
+      )}
+
+      {isRvp && (
+        <RemindButton
+          recipients={nonSubmitterEmails}
+          names={nonSubmitterNames}
+          weekStart={weekStart}
+        />
       )}
 
       <StatusDashboardTable statuses={statuses ?? []} />
