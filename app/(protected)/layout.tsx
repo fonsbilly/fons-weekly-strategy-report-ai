@@ -49,6 +49,12 @@ export default async function ProtectedLayout({ children }: { children: React.Re
                 Submit Report
               </Link>
             )}
+            <Link href="/history" style={{ color: "var(--text-muted)" }}>
+              History
+            </Link>
+            <Link href="/trends" style={{ color: "var(--text-muted)" }}>
+              Trends
+            </Link>
             {profile.role === "rvp" && (
               <>
                 <Link href="/admin/compile" style={{ color: "var(--text-muted)" }}>
