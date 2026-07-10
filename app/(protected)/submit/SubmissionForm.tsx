@@ -1,7 +1,33 @@
 "use client";
 
-import { useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+
+function AutoTextarea({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={textareaStyle}
+    />
+  );
+}
 
 export default function SubmissionForm({
   initialPositives,
@@ -86,34 +112,19 @@ export default function SubmissionForm({
     <>
       <form
         onSubmit={handleSubmit}
-        style={{ display: "flex", flexDirection: "column", gap: "1.25rem", maxWidth: 640 }}
+        style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: 900 }}
       >
         <label>
-          Positives
-          <textarea
-            value={positives}
-            onChange={(e) => setPositives(e.target.value)}
-            rows={4}
-            style={textareaStyle}
-          />
+          <div style={labelTextStyle}>Positives</div>
+          <AutoTextarea value={positives} onChange={setPositives} />
         </label>
         <label>
-          Challenges
-          <textarea
-            value={challenges}
-            onChange={(e) => setChallenges(e.target.value)}
-            rows={4}
-            style={textareaStyle}
-          />
+          <div style={labelTextStyle}>Challenges</div>
+          <AutoTextarea value={challenges} onChange={setChallenges} />
         </label>
         <label>
-          Narrative
-          <textarea
-            value={narrative}
-            onChange={(e) => setNarrative(e.target.value)}
-            rows={4}
-            style={textareaStyle}
-          />
+          <div style={labelTextStyle}>Narrative</div>
+          <AutoTextarea value={narrative} onChange={setNarrative} />
         </label>
         {error && <p style={{ color: "#f87171", margin: 0 }}>{error}</p>}
         {success && <p style={{ color: "#4ade80", margin: 0 }}>Saved.</p>}
@@ -153,18 +164,25 @@ export default function SubmissionForm({
   );
 }
 
+const labelTextStyle: CSSProperties = {
+  marginBottom: "0.35rem",
+  fontWeight: 600,
+};
+
 const textareaStyle: CSSProperties = {
   display: "block",
   width: "100%",
-  marginTop: "0.35rem",
-  padding: "0.6rem",
+  minHeight: "140px",
+  padding: "0.75rem",
   background: "var(--surface)",
   border: "1px solid var(--border)",
   borderRadius: 6,
   color: "var(--text)",
   fontSize: "1rem",
   fontFamily: "inherit",
+  lineHeight: 1.6,
   resize: "vertical",
+  overflow: "hidden",
 };
 
 const buttonStyle: CSSProperties = {
