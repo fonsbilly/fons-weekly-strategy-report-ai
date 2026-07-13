@@ -22,22 +22,30 @@ export async function analyzeTrends(params: {
     return { branchThemes: [], crossBranchFlags: [] };
   }
 
-  const systemPrompt = `You analyze weekly branch status reports for a Regional VP to surface patterns over time. Work ONLY from the reports provided - never invent facts, deals, names, or numbers. Be concrete and specific, and name the branch.
+  const systemPrompt = `You analyze weekly branch status reports for a Regional VP to surface patterns over time. Work ONLY from the reports provided - never invent facts, deals, names, or numbers. Be concrete and specific, and name the branches involved.
 
-For each branch, identify recurring themes across its weeks: challenges that keep reappearing, ongoing wins, situations that are dragging on, or shifts over time. ${
+For each branch, identify recurring themes across its weeks: challenges that keep reappearing, ongoing wins, situations that are dragging on, or shifts over time.${
     includeCrossBranch
-      ? "Also identify cross-branch flags: a specific issue or theme that shows up at two or more DIFFERENT branches in a similar timeframe (e.g. multiple branches independently reporting the same operational problem) - the kind of pattern that could signal a systemic/corporate issue worth investigating."
+      ? `
+
+Most importantly, identify CROSS-BRANCH CORRELATIONS - patterns that span two or more DIFFERENT branches, which a single branch might assume is unique to them but could actually be systemic. Look specifically for:
+- The same operational or product problem independently reported at multiple branches (e.g. the same equipment, vendor, process, or system issue) - a sign it may be a corporate/systemic problem rather than a local one.
+- Multiple branches struggling with the same performance goal (bookings, sales, AR, staffing, etc.), especially if the struggle clusters in the same time window.
+- A challenge that appears at different branches in a staggered way over the period, suggesting something rolling through the region.
+For each correlation, name the specific branches involved, the shared issue, and the timeframe if evident. Only report genuine patterns supported by the reports - do not stretch to connect unrelated things.`
       : ""
   }
 
 Respond with ONLY a JSON object, no other text:
 {
   "branch_themes": [ { "branch": "<branch key>", "themes": ["short phrase", "short phrase"] } ]${
-    includeCrossBranch ? ',\n  "cross_branch_flags": ["short specific phrase naming the branches involved"]' : ""
+    includeCrossBranch
+      ? ',\n  "cross_branch_flags": ["one clear sentence: the shared issue, the branches involved, and timeframe if evident"]'
+      : ""
   }
 }
 Keep each theme to a short phrase. If a branch shows no meaningful recurring pattern, give it an empty themes array.${
-    includeCrossBranch ? " If there are no genuine cross-branch patterns, use an empty array." : ""
+    includeCrossBranch ? " If there are no genuine cross-branch correlations, use an empty array - do not invent connections." : ""
   }`;
 
   const branchBlocks = branches

@@ -43,42 +43,51 @@ export default function TrendAnalysis({
 
   return (
     <div style={cardStyle}>
-      <h3 style={{ marginTop: 0 }}>Recurring themes{isRvp ? " & cross-branch flags" : ""}</h3>
+      <h3 style={{ marginTop: 0 }}>
+        {isRvp ? "Cross-branch correlations" : "Recurring themes"}
+      </h3>
       <p style={{ color: "var(--text-muted)", marginTop: 0 }}>
-        Reads recent reports and pulls out patterns. Runs on demand (uses the AI, takes a few
-        seconds).
+        {isRvp
+          ? "Reads the selected date range of reports across all branches and flags issues that span more than one branch - shared operational or product problems, common performance-goal struggles, or something rolling through the region - so a systemic issue isn't mistaken for a local one. Runs on demand (uses the AI, takes a few seconds)."
+          : "Reads recent reports and pulls out patterns for your branch. Runs on demand (uses the AI, takes a few seconds)."}
       </p>
       <button onClick={run} disabled={loading} style={buttonStyle}>
-        {loading ? "Analyzing..." : "Analyze trends"}
+        {loading ? "Analyzing..." : "Analyze"}
       </button>
 
       {error && <p style={{ color: "#f87171" }}>{error}</p>}
 
-      {result && (
+      {result && isRvp && (
         <div style={{ marginTop: "1.25rem" }}>
-          {isRvp && result.crossBranchFlags.length > 0 && (
+          {result.crossBranchFlags.length === 0 ? (
+            <p style={{ color: "var(--text-muted)" }}>
+              No cross-branch correlations found in this range.
+            </p>
+          ) : (
             <div
               style={{
                 border: "1px solid #facc15",
                 background: "rgba(250, 204, 21, 0.08)",
                 borderRadius: 8,
                 padding: "1rem",
-                marginBottom: "1.25rem",
               }}
             >
-              <strong>Cross-branch flags</strong>
-              <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem" }}>
+              <strong>Potential systemic patterns</strong>
+              <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem", lineHeight: 1.6 }}>
                 {result.crossBranchFlags.map((f, i) => (
                   <li key={i}>{f}</li>
                 ))}
               </ul>
             </div>
           )}
+        </div>
+      )}
 
+      {result && !isRvp && (
+        <div style={{ marginTop: "1.25rem" }}>
           {result.branchThemes.length === 0 && (
             <p style={{ color: "var(--text-muted)" }}>No clear recurring themes yet.</p>
           )}
-
           {result.branchThemes.map((bt) => (
             <div key={bt.branch} style={{ marginBottom: "1rem" }}>
               <strong>{bt.branchLabel}</strong>

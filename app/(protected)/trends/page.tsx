@@ -133,7 +133,9 @@ export default async function TrendsPage({
         </div>
       )}
 
-      {!isRvp && <TrendAnalysis key={`${from}-${to}`} isRvp={isRvp} from={from} to={to} />}
+      {/* RVP: cross-branch correlations. Director: own-branch recurring themes.
+          (The component switches its content by role.) */}
+      <TrendAnalysis key={`${from}-${to}`} isRvp={isRvp} from={from} to={to} />}
     </div>
   );
 }
