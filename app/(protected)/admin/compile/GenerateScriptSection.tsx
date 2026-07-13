@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 
 export default function GenerateScriptSection({
@@ -15,12 +15,22 @@ export default function GenerateScriptSection({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [finalized, setFinalized] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Grow the edit box to fit the whole script so there's no scrolling inside it.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [script]);
 
   async function handleGenerate() {
     setGenerating(true);
     setError(null);
-    setFinalized(false);
+    setSaved(false);
 
     const res = await fetch("/api/generate-script", {
       method: "POST",
@@ -40,7 +50,7 @@ export default function GenerateScriptSection({
     router.refresh();
   }
 
-  async function handleFinalize() {
+  async function handleSave() {
     setSaving(true);
     await fetch("/api/generate-script", {
       method: "PATCH",
@@ -48,33 +58,46 @@ export default function GenerateScriptSection({
       body: JSON.stringify({ weekStart, finalScript: script }),
     });
     setSaving(false);
-    setFinalized(true);
+    setSaved(true);
     router.refresh();
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(script);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
     <div style={cardStyle}>
       <h3 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Script</h3>
       <p style={{ color: "var(--text-muted)", marginTop: 0 }}>
-        Make sure you've saved your selections above first - this uses whatever was last saved.
+        Save your selections above first - Generate uses whatever was last saved. You can edit the
+        result below and save your changes as many times as you like.
       </p>
       <button onClick={handleGenerate} disabled={generating} style={buttonStyle}>
-        {generating ? "Generating..." : "Generate Script"}
+        {generating ? "Generating..." : script ? "Regenerate Script" : "Generate Script"}
       </button>
       {error && <p style={{ color: "#f87171" }}>{error}</p>}
       {script && (
         <>
           <textarea
+            ref={textareaRef}
             value={script}
-            onChange={(e) => setScript(e.target.value)}
-            rows={16}
+            onChange={(e) => {
+              setScript(e.target.value);
+              setSaved(false);
+            }}
             style={{ ...textareaStyle, marginTop: "1rem" }}
           />
-          <div style={{ marginTop: "0.75rem" }}>
-            <button onClick={handleFinalize} disabled={saving} style={buttonStyle}>
-              {saving ? "Saving..." : "Finalize"}
+          <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <button onClick={handleSave} disabled={saving} style={buttonStyle}>
+              {saving ? "Saving..." : "Save changes"}
             </button>
-            {finalized && <span style={{ color: "#4ade80", marginLeft: "0.75rem" }}>Finalized.</span>}
+            <button onClick={handleCopy} style={secondaryButtonStyle}>
+              {copied ? "Copied!" : "Copy to clipboard"}
+            </button>
+            {saved && <span style={{ color: "#4ade80" }}>Saved.</span>}
           </div>
         </>
       )}
@@ -91,7 +114,8 @@ const cardStyle: CSSProperties = {
 const textareaStyle: CSSProperties = {
   display: "block",
   width: "100%",
-  padding: "0.6rem",
+  minHeight: "200px",
+  padding: "0.75rem",
   background: "var(--surface)",
   border: "1px solid var(--border)",
   borderRadius: 6,
@@ -99,7 +123,8 @@ const textareaStyle: CSSProperties = {
   fontSize: "1rem",
   fontFamily: "inherit",
   resize: "vertical",
-  lineHeight: 1.5,
+  lineHeight: 1.6,
+  overflow: "hidden",
 };
 
 const buttonStyle: CSSProperties = {
@@ -109,6 +134,16 @@ const buttonStyle: CSSProperties = {
   borderRadius: 6,
   color: "#0f172a",
   fontWeight: 600,
+  fontSize: "1rem",
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  padding: "0.7rem 1.4rem",
+  background: "transparent",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  color: "var(--text)",
   fontSize: "1rem",
   cursor: "pointer",
 };
