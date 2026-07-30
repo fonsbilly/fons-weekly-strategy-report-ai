@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getWeekStart } from "@/lib/weeks";
+import { getWeekStart, isLate } from "@/lib/weeks";
 import StatusDashboardTable from "./StatusDashboardTable";
 import RemindButton from "./RemindButton";
 
@@ -21,11 +21,23 @@ export default async function DashboardPage() {
 
   const { data: settings } = await supabase
     .from("org_settings")
-    .select("timezone, wpm_calibrated")
+    .select("timezone, wpm_calibrated, submission_deadline_day, submission_deadline_time")
     .single();
-  const weekStart = getWeekStart(new Date(), settings?.timezone ?? "America/Detroit");
+  const timeZone = settings?.timezone ?? "America/Detroit";
+  const deadlineDay = settings?.submission_deadline_day ?? "thursday";
+  const deadlineTime = settings?.submission_deadline_time ?? "23:59:00";
+  const weekStart = getWeekStart(new Date(), timeZone);
 
-  const { data: statuses } = await supabase.rpc("get_week_status", { p_week_start: weekStart });
+  const { data: rawStatuses } = await supabase.rpc("get_week_status", { p_week_start: weekStart });
+
+  // Recompute lateness live from submitted_at + the current deadline rather than trusting the
+  // stored flag - so any submission recorded under the old (buggy) timezone math self-corrects.
+  const statuses = (rawStatuses ?? []).map((s: any) => ({
+    ...s,
+    is_late: s.submitted_at
+      ? isLate(new Date(s.submitted_at), weekStart, deadlineDay, deadlineTime, timeZone)
+      : s.is_late,
+  }));
 
   const isRvp = profile?.role === "rvp";
   const showCalibratePrompt = isRvp && !settings?.wpm_calibrated;
@@ -93,10 +105,7 @@ export default async function DashboardPage() {
         />
       )}
 
-      <StatusDashboardTable
-        statuses={statuses ?? []}
-        timeZone={settings?.timezone ?? "America/Detroit"}
-      />
+      <StatusDashboardTable statuses={statuses} timeZone={timeZone} />
     </div>
   );
 }
