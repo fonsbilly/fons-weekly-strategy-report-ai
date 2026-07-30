@@ -26,14 +26,23 @@ function computeDeadline(
   timeZone: string
 ): Date {
   const dayOffset = DAY_INDEX[deadlineDay.toLowerCase()] - 1; // offset from Monday
-  const [hh, mm, ss] = deadlineTime.split(":").map(Number);
 
-  const mondayZoned = toZonedTime(`${weekStart}T00:00:00`, timeZone);
-  const deadlineZoned = new Date(mondayZoned);
-  deadlineZoned.setDate(deadlineZoned.getDate() + dayOffset);
-  deadlineZoned.setHours(hh, mm, ss || 0, 0);
+  // Date-only arithmetic in UTC to land on the deadline's calendar date (no DST/offset skew).
+  const [y, m, d] = weekStart.split("-").map(Number);
+  const base = new Date(Date.UTC(y, m - 1, d));
+  base.setUTCDate(base.getUTCDate() + dayOffset);
 
-  return fromZonedTime(deadlineZoned, timeZone);
+  const yyyy = base.getUTCFullYear();
+  const mo = String(base.getUTCMonth() + 1).padStart(2, "0");
+  const da = String(base.getUTCDate()).padStart(2, "0");
+  const [hh, mi, ss] = deadlineTime.split(":");
+
+  // Interpret this wall-clock time AS the org's timezone, then get the real UTC instant.
+  const wall = `${yyyy}-${mo}-${da}T${(hh ?? "23").padStart(2, "0")}:${(mi ?? "59").padStart(
+    2,
+    "0"
+  )}:${(ss ?? "00").padStart(2, "0")}`;
+  return fromZonedTime(wall, timeZone);
 }
 
 export function isLate(

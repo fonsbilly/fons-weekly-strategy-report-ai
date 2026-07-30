@@ -13,10 +13,26 @@ const BRANCH_LABELS: Record<string, string> = {
   indianapolis: "Indianapolis",
 };
 
-export default function StatusDashboardTable({ statuses }: { statuses: StatusRow[] }) {
+export default function StatusDashboardTable({
+  statuses,
+  timeZone,
+}: {
+  statuses: StatusRow[];
+  timeZone: string;
+}) {
   if (statuses.length === 0) {
     return <p style={{ color: "var(--text-muted)" }}>No directors on the roster yet.</p>;
   }
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString("en-US", {
+      timeZone,
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
 
   return (
     <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
@@ -36,7 +52,7 @@ export default function StatusDashboardTable({ statuses }: { statuses: StatusRow
             <td style={tdStyle}>
               {s.has_submitted ? (s.is_late ? "Submitted late" : "Submitted on time") : "Not submitted"}
             </td>
-            <td style={tdStyle}>{s.submitted_at ? new Date(s.submitted_at).toLocaleString() : "—"}</td>
+            <td style={tdStyle}>{s.submitted_at ? fmt(s.submitted_at) : "—"}</td>
           </tr>
         ))}
       </tbody>

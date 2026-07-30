@@ -93,7 +93,10 @@ export default async function DashboardPage() {
         />
       )}
 
-      <StatusDashboardTable statuses={statuses ?? []} />
+      <StatusDashboardTable
+        statuses={statuses ?? []}
+        timeZone={settings?.timezone ?? "America/Detroit"}
+      />
     </div>
   );
 }
