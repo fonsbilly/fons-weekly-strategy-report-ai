@@ -43,14 +43,30 @@ export default function SettingsForm({
   const [showTest, setShowTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const allocation = allocateTime(totalTargetSeconds, introSeconds, aiSeconds, activeBranchCount);
+
+  // Derive 12-hour parts from the stored "HH:MM:SS" deadline time.
+  const [dh, dm] = deadlineTime.split(":");
+  const h24 = Number.isFinite(parseInt(dh, 10)) ? parseInt(dh, 10) : 23;
+  const minutePart = dm ?? "00";
+  const ampm = h24 >= 12 ? "PM" : "AM";
+  const hour12 = ((h24 + 11) % 12) + 1;
+
+  function setTimeParts(nHour12: number, nMinute: string, nAmpm: string) {
+    let h = nHour12 % 12;
+    if (nAmpm === "PM") h += 12;
+    setDeadlineTime(`${String(h).padStart(2, "0")}:${nMinute}:00`);
+    markDirty();
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setError(null);
 
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -65,6 +81,13 @@ export default function SettingsForm({
     });
 
     setSaving(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Failed to save settings.");
+      return;
+    }
+
     setSaved(true);
     router.refresh();
   }
@@ -221,15 +244,38 @@ export default function SettingsForm({
           </label>
           <label>
             Time
-            <input
-              type="time"
-              value={deadlineTime.slice(0, 5)}
-              onChange={(e) => {
-                setDeadlineTime(`${e.target.value}:00`);
-                markDirty();
-              }}
-              style={inputStyle}
-            />
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.35rem" }}>
+              <select
+                value={hour12}
+                onChange={(e) => setTimeParts(Number(e.target.value), minutePart, ampm)}
+                style={{ ...inputStyle, width: "auto", marginTop: 0 }}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                  <option key={h} value={h}>
+                    {h}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={minutePart}
+                onChange={(e) => setTimeParts(hour12, e.target.value, ampm)}
+                style={{ ...inputStyle, width: "auto", marginTop: 0 }}
+              >
+                {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={ampm}
+                onChange={(e) => setTimeParts(hour12, minutePart, e.target.value)}
+                style={{ ...inputStyle, width: "auto", marginTop: 0 }}
+              >
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
           </label>
           <label>
             Timezone
@@ -251,6 +297,7 @@ export default function SettingsForm({
           {saving ? "Saving..." : "Save settings"}
         </button>
         {saved && <span style={{ color: "#4ade80", marginLeft: "0.75rem" }}>Saved.</span>}
+        {error && <span style={{ color: "#f87171", marginLeft: "0.75rem" }}>{error}</span>}
       </div>
     </form>
   );
