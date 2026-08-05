@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import MicButton from "@/components/MicButton";
 
 type SubmissionRow = {
   director_id: string;
@@ -145,7 +146,22 @@ export default function CompileScrubView({
       ))}
 
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0, marginBottom: "0.75rem" }}>AI Initiatives</h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <h3 style={{ margin: 0 }}>AI Initiatives</h3>
+          <MicButton
+            onText={(t) => {
+              setAiContent((p) => (p.trim() ? `${p.trim()} ${t}` : t));
+              setSaved(false);
+            }}
+          />
+        </div>
         <textarea
           value={aiContent}
           onChange={(e) => {

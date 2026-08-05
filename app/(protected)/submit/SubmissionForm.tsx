@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import MicButton from "@/components/MicButton";
+
+function appendText(prev: string, added: string): string {
+  return prev.trim() ? `${prev.trim()} ${added}` : added;
+}
 
 function AutoTextarea({
   value,
@@ -115,15 +120,24 @@ export default function SubmissionForm({
         style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: 900 }}
       >
         <label>
-          <div style={labelTextStyle}>Positives</div>
+          <div style={fieldHeaderStyle}>
+            <span style={labelTextStyle}>Positives</span>
+            <MicButton onText={(t) => setPositives((p) => appendText(p, t))} />
+          </div>
           <AutoTextarea value={positives} onChange={setPositives} />
         </label>
         <label>
-          <div style={labelTextStyle}>Challenges</div>
+          <div style={fieldHeaderStyle}>
+            <span style={labelTextStyle}>Challenges</span>
+            <MicButton onText={(t) => setChallenges((p) => appendText(p, t))} />
+          </div>
           <AutoTextarea value={challenges} onChange={setChallenges} />
         </label>
         <label>
-          <div style={labelTextStyle}>Narrative</div>
+          <div style={fieldHeaderStyle}>
+            <span style={labelTextStyle}>Narrative</span>
+            <MicButton onText={(t) => setNarrative((p) => appendText(p, t))} />
+          </div>
           <AutoTextarea value={narrative} onChange={setNarrative} />
         </label>
         {error && <p style={{ color: "#f87171", margin: 0 }}>{error}</p>}
@@ -165,8 +179,14 @@ export default function SubmissionForm({
 }
 
 const labelTextStyle: CSSProperties = {
-  marginBottom: "0.35rem",
   fontWeight: 600,
+};
+
+const fieldHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "0.35rem",
 };
 
 const textareaStyle: CSSProperties = {
