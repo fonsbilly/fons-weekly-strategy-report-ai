@@ -7,6 +7,12 @@ import WpmTest from "./WpmTest";
 
 const DEADLINE_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
+const BRANCH_LABELS: Record<string, string> = {
+  detroit: "Detroit",
+  grand_rapids: "Grand Rapids",
+  indianapolis: "Indianapolis",
+};
+
 export default function SettingsForm({
   initialStyleGuide,
   wordsPerMinute,
@@ -18,6 +24,8 @@ export default function SettingsForm({
   initialDeadlineDay,
   initialDeadlineTime,
   initialTimezone,
+  initialCoachingGuidance,
+  directors,
   apiKeyConfigured,
 }: {
   initialStyleGuide: string;
@@ -30,6 +38,8 @@ export default function SettingsForm({
   initialDeadlineDay: string;
   initialDeadlineTime: string;
   initialTimezone: string;
+  initialCoachingGuidance: string;
+  directors: { id: string; fullName: string; branch: string; focusNotes: string }[];
   apiKeyConfigured: boolean;
 }) {
   const router = useRouter();
@@ -40,6 +50,10 @@ export default function SettingsForm({
   const [deadlineDay, setDeadlineDay] = useState(initialDeadlineDay);
   const [deadlineTime, setDeadlineTime] = useState(initialDeadlineTime);
   const [timezone, setTimezone] = useState(initialTimezone);
+  const [coachingGuidance, setCoachingGuidance] = useState(initialCoachingGuidance);
+  const [focusNotes, setFocusNotes] = useState<Record<string, string>>(
+    Object.fromEntries(directors.map((d) => [d.id, d.focusNotes]))
+  );
   const [showTest, setShowTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -77,6 +91,8 @@ export default function SettingsForm({
         submissionDeadlineDay: deadlineDay,
         submissionDeadlineTime: deadlineTime,
         timezone,
+        coachingGuidance,
+        directorFocus: directors.map((d) => ({ id: d.id, focusNotes: focusNotes[d.id] ?? "" })),
       }),
     });
 
@@ -220,6 +236,49 @@ export default function SettingsForm({
             style={textareaStyle}
           />
         </label>
+      </div>
+
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0 }}>Coaching &amp; training</h3>
+        <p style={{ color: "var(--text-muted)", marginTop: 0 }}>
+          When a director submits, the tool checks their report against this guidance and nudges
+          them before they submit if they&apos;ve missed something you asked for. Refine these week
+          over week.
+        </p>
+        <label>
+          General guidance (applies to all directors)
+          <textarea
+            value={coachingGuidance}
+            onChange={(e) => {
+              setCoachingGuidance(e.target.value);
+              markDirty();
+            }}
+            rows={4}
+            style={textareaStyle}
+            placeholder="e.g. Push for specific numbers, not vague statements. Ask them to name owners and dates."
+          />
+        </label>
+
+        <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {directors.length === 0 && (
+            <p style={{ color: "var(--text-muted)", margin: 0 }}>No active directors yet.</p>
+          )}
+          {directors.map((d) => (
+            <label key={d.id}>
+              {d.fullName} ({BRANCH_LABELS[d.branch] ?? d.branch})
+              <textarea
+                value={focusNotes[d.id] ?? ""}
+                onChange={(e) => {
+                  setFocusNotes((prev) => ({ ...prev, [d.id]: e.target.value }));
+                  markDirty();
+                }}
+                rows={3}
+                style={textareaStyle}
+                placeholder={`What should ${d.fullName.split(" ")[0]} always cover? e.g. "Report CPT progress every week."`}
+              />
+            </label>
+          ))}
+        </div>
       </div>
 
       <div style={cardStyle}>

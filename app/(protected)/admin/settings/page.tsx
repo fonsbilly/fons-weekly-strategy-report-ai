@@ -9,15 +9,18 @@ export default async function SettingsPage() {
   const { data: settings } = await supabase
     .from("org_settings")
     .select(
-      "style_guide, words_per_minute, total_target_seconds, intro_seconds, ai_seconds, submission_deadline_day, submission_deadline_time, timezone, wpm_calibrated"
+      "style_guide, words_per_minute, total_target_seconds, intro_seconds, ai_seconds, submission_deadline_day, submission_deadline_time, timezone, wpm_calibrated, coaching_guidance"
     )
     .single();
 
-  const { count: activeBranchCount } = await supabase
+  const { data: directors } = await supabase
     .from("profiles")
-    .select("id", { count: "exact", head: true })
+    .select("id, full_name, branch, focus_notes")
     .eq("role", "director")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .order("full_name");
+
+  const activeBranchCount = directors?.length ?? 0;
 
   return (
     <div>
@@ -36,6 +39,13 @@ export default async function SettingsPage() {
         initialDeadlineDay={settings?.submission_deadline_day ?? "thursday"}
         initialDeadlineTime={settings?.submission_deadline_time ?? "23:59:00"}
         initialTimezone={settings?.timezone ?? "America/Detroit"}
+        initialCoachingGuidance={settings?.coaching_guidance ?? ""}
+        directors={(directors ?? []).map((d: any) => ({
+          id: d.id,
+          fullName: d.full_name,
+          branch: d.branch,
+          focusNotes: d.focus_notes ?? "",
+        }))}
         apiKeyConfigured={Boolean(process.env.ANTHROPIC_API_KEY)}
       />
     </div>

@@ -53,7 +53,7 @@ export default function SubmissionForm({
   const [success, setSuccess] = useState(false);
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [warning, setWarning] = useState<{ weeks: string[]; explanation: string } | null>(null);
+  const [warning, setWarning] = useState<{ title: string; body: string } | null>(null);
 
   async function doSave(acknowledgedDuplicateWarning: boolean) {
     setSaving(true);
@@ -85,26 +85,36 @@ export default function SubmissionForm({
     setWarning(null);
     setChecking(true);
 
-    let similar = false;
-    let result: { similarWeekStarts?: string[]; explanation?: string; isSimilar?: boolean } = {};
-    try {
-      const res = await fetch("/api/submissions/check-duplicate", {
+    const payload = { positives, challenges, narrative };
+    const post = (url: string) =>
+      fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ positives, challenges, narrative }),
-      });
-      result = await res.json();
-      similar = Boolean(result.isSimilar);
-    } catch {
-      similar = false;
-    }
+        body: JSON.stringify(payload),
+      })
+        .then((r) => r.json())
+        .catch(() => ({}));
+
+    // Run the coaching check and the duplicate check together.
+    const [coach, dup] = await Promise.all([
+      post("/api/submissions/coach-check"),
+      post("/api/submissions/check-duplicate"),
+    ]);
     setChecking(false);
 
-    if (similar) {
-      setWarning({
-        weeks: result.similarWeekStarts ?? [],
-        explanation: result.explanation ?? "",
-      });
+    // Coaching nudge takes priority (it's the RVP's specific ask), then the duplicate warning.
+    if (coach?.needsAttention && coach?.message) {
+      setWarning({ title: "A note from your RVP", body: coach.message });
+      return;
+    }
+    if (dup?.isSimilar) {
+      const weeks: string[] = dup.similarWeekStarts ?? [];
+      const explanation: string = dup.explanation ?? "";
+      const body =
+        `This is substantially similar to what you already reported` +
+        (weeks.length > 0 ? ` (week of ${weeks.join(", ")}).` : ".") +
+        (explanation ? ` ${explanation}` : "");
+      setWarning({ title: "Looks familiar", body });
       return;
     }
 
@@ -156,16 +166,12 @@ export default function SubmissionForm({
       {warning && (
         <div style={overlayStyle}>
           <div style={dialogStyle}>
-            <h3 style={{ marginTop: 0 }}>Looks familiar</h3>
-            <p style={{ color: "var(--text-muted)" }}>
-              This is substantially similar to what you already reported
-              {warning.weeks.length > 0 ? ` (week of ${warning.weeks.join(", ")})` : ""}.
-            </p>
-            {warning.explanation && <p style={{ fontStyle: "italic" }}>{warning.explanation}</p>}
+            <h3 style={{ marginTop: 0 }}>{warning.title}</h3>
+            <p style={{ color: "var(--text-muted)" }}>{warning.body}</p>
             <p>Submit it anyway?</p>
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button onClick={() => setWarning(null)} disabled={saving} style={secondaryButtonStyle}>
-                Cancel
+                Go back &amp; edit
               </button>
               <button onClick={() => doSave(true)} disabled={saving} style={buttonStyle}>
                 {saving ? "Saving..." : "Submit anyway"}

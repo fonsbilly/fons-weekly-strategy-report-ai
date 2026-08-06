@@ -41,11 +41,27 @@ export async function PUT(request: Request) {
       submission_deadline_day: body.submissionDeadlineDay ?? "thursday",
       submission_deadline_time: body.submissionDeadlineTime ?? "23:59:00",
       timezone: body.timezone ?? "America/Detroit",
+      coaching_guidance: body.coachingGuidance ?? "",
     })
     .eq("id", true);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  // Per-director focus notes. RLS lets the RVP update any profile row.
+  const directorFocus = body.directorFocus as { id: string; focusNotes: string }[] | undefined;
+  if (Array.isArray(directorFocus)) {
+    for (const d of directorFocus) {
+      if (!d?.id) continue;
+      const { error: fErr } = await supabase
+        .from("profiles")
+        .update({ focus_notes: d.focusNotes ?? "" })
+        .eq("id", d.id);
+      if (fErr) {
+        return NextResponse.json({ error: fErr.message }, { status: 400 });
+      }
+    }
   }
 
   return NextResponse.json({ ok: true });
