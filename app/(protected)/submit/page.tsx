@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getWeekStart } from "@/lib/weeks";
 import type { Profile } from "@/lib/types";
 import SubmissionForm from "./SubmissionForm";
+import PhotoManager from "@/components/PhotoManager";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,9 @@ export default async function SubmitPage() {
         initialNarrative={existing?.narrative ?? ""}
         alreadySubmitted={Boolean(existing)}
       />
+      <div style={{ marginTop: "2rem", borderTop: "1px solid var(--border)", paddingTop: "1.5rem" }}>
+        <PhotoManager directorId={user.id} branch={profile.branch ?? ""} weekStart={weekStart} />
+      </div>
     </div>
   );
 }

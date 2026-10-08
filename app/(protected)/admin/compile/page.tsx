@@ -29,6 +29,28 @@ export default async function CompilePage() {
     .eq("week_start", weekStart)
     .maybeSingle();
 
+  // Photos attached to this week's submissions (RVP sees all via RLS). Sign them server-side.
+  const { data: photoRows } = await supabase
+    .from("submission_photos")
+    .select("id, director_id, storage_path")
+    .eq("week_start", weekStart)
+    .order("created_at");
+
+  const photosByDirector: Record<string, { id: string; url: string }[]> = {};
+  if (photoRows && photoRows.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from("submission-photos")
+      .createSignedUrls(
+        photoRows.map((r: any) => r.storage_path),
+        3600
+      );
+    const urlByPath = new Map((signed ?? []).map((s: any) => [s.path, s.signedUrl]));
+    for (const r of photoRows as any[]) {
+      if (!photosByDirector[r.director_id]) photosByDirector[r.director_id] = [];
+      photosByDirector[r.director_id].push({ id: r.id, url: urlByPath.get(r.storage_path) ?? "" });
+    }
+  }
+
   const submittedDirectorIds = new Set((submissions ?? []).map((s: any) => s.director_id));
 
   const rows = (submissions ?? []).map((s: any) => ({
@@ -56,6 +78,7 @@ export default async function CompilePage() {
         weekStart={weekStart}
         submissions={rows}
         missing={missing}
+        photosByDirector={photosByDirector}
         initialSelectedFields={(draft?.selected_fields as Record<string, string[]>) ?? {}}
         initialAiContent={draft?.ai_initiatives_content ?? ""}
         initialUseHistoryBranches={draft?.use_history_branches ?? []}

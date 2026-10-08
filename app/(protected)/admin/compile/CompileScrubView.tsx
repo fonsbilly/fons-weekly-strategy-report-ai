@@ -35,6 +35,7 @@ export default function CompileScrubView({
   weekStart,
   submissions,
   missing,
+  photosByDirector,
   initialSelectedFields,
   initialAiContent,
   initialUseHistoryBranches,
@@ -42,6 +43,7 @@ export default function CompileScrubView({
   weekStart: string;
   submissions: SubmissionRow[];
   missing: MissingRow[];
+  photosByDirector: Record<string, { id: string; url: string }[]>;
   initialSelectedFields: Record<string, string[]>;
   initialAiContent: string;
   initialUseHistoryBranches: string[];
@@ -121,6 +123,36 @@ export default function CompileScrubView({
               </label>
             </div>
           ))}
+          {(photosByDirector[s.director_id]?.length ?? 0) > 0 && (
+            <div style={{ marginTop: "0.5rem" }}>
+              <div style={{ color: "var(--text-muted)", marginBottom: "0.4rem" }}>Photos</div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
+                  gap: "0.5rem",
+                }}
+              >
+                {photosByDirector[s.director_id].map((p) => (
+                  <a key={p.id} href={p.url} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.url}
+                      alt="attachment"
+                      style={{
+                        width: "100%",
+                        height: 110,
+                        objectFit: "cover",
+                        borderRadius: 6,
+                        border: "1px solid var(--border)",
+                        display: "block",
+                      }}
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ))}
 
